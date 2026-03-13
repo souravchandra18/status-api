@@ -55,12 +55,6 @@ resource "google_secret_manager_secret" "app_env" {
   }
 }
 
-resource "google_secret_manager_secret_version" "app_env" {
-  secret = google_secret_manager_secret.app_env.id
-  # JSON payload mirrors what the Python app expects
-  secret_data = jsonencode({ APP_ENV = "production" })
-}
-
 # ── App service account ───────────────────────────────────────────────────────
 # AWS equivalent: IAM role with trust policy for EC2 service principal
 resource "google_service_account" "app_sa" {
@@ -290,27 +284,3 @@ resource "google_compute_instance" "app" {
   ]
 }
 
-# CI/CD permissions for terraform plan state refresh
-resource "google_project_iam_member" "cicd_security_reviewer" {
-  project = var.project_id
-  role    = "roles/iam.securityReviewer"
-  member  = "serviceAccount:${google_service_account.cicd_sa.email}"
-}
-
-resource "google_project_iam_member" "cicd_secret_viewer" {
-  project = var.project_id
-  role    = "roles/secretmanager.viewer"
-  member  = "serviceAccount:${google_service_account.cicd_sa.email}"
-}
-
-resource "google_project_iam_member" "cicd_viewer" {
-  project = var.project_id
-  role    = "roles/viewer"
-  member  = "serviceAccount:${google_service_account.cicd_sa.email}"
-}
-
-resource "google_project_iam_member" "cicd_secret_version_manager" {
-  project = var.project_id
-  role    = "roles/secretmanager.secretVersionManager"
-  member  = "serviceAccount:${google_service_account.cicd_sa.email}"
-}
