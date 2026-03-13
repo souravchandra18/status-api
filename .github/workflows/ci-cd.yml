@@ -292,6 +292,7 @@ jobs:
             --zone="$ZONE" \
             --project=${{ secrets.GCP_PROJECT_ID }} \
             --ssh-key-expire-after=10m \
+            --tunnel-through-iap \
             --quiet \
             --command="set -e
               REGISTRY=${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.AR_REPO }}
