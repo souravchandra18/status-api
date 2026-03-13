@@ -268,7 +268,7 @@ resource "google_monitoring_dashboard" "main" {
                     filter = "metric.type=\"custom.googleapis.com/status_api/request_count\" resource.type=\"gce_instance\""
                     aggregation = {
                       alignmentPeriod    = "60s"
-                      perSeriesAligner   = "ALIGN_MEAN"
+                      perSeriesAligner   = "ALIGN_RATE"
                       crossSeriesReducer = "REDUCE_SUM"
                     }
                   }
@@ -291,7 +291,7 @@ resource "google_monitoring_dashboard" "main" {
                     filter = "metric.type=\"custom.googleapis.com/status_api/response_time_ms\" resource.type=\"gce_instance\""
                     aggregation = {
                       alignmentPeriod    = "60s"
-                      perSeriesAligner   = "ALIGN_MEAN"
+                      perSeriesAligner   = "ALIGN_PERCENTILE_99"
                       crossSeriesReducer = "REDUCE_MEAN"
                     }
                   }
