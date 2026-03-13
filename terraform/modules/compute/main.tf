@@ -309,3 +309,9 @@ resource "google_project_iam_member" "cicd_viewer" {
   role    = "roles/viewer"
   member  = "serviceAccount:${google_service_account.cicd_sa.email}"
 }
+
+resource "google_project_iam_member" "cicd_secret_version_manager" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretVersionManager"
+  member  = "serviceAccount:${google_service_account.cicd_sa.email}"
+}
