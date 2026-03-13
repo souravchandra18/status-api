@@ -1,30 +1,25 @@
 # ── Observability Module ──────────────────────────────────────────────────────
 #
 # AWS → GCP mapping:
-#   CloudWatch Log Group       → Cloud Logging (automatic for GCE VMs — no resource needed)
-#   CloudWatch Metric Filter   → google_logging_metric (log-based metric)
+#   CloudWatch Log Group       → Cloud Logging (automatic for GCE VMs)
+#   CloudWatch Metric Filter   → google_logging_metric
 #   CloudWatch Alarm           → google_monitoring_alert_policy
 #   CloudWatch Dashboard       → google_monitoring_dashboard
 #   Route53 Health Check       → google_monitoring_uptime_check_config
-#   SNS Topic + Subscription   → google_monitoring_notification_channel (email)
-#
+#   SNS Topic + Subscription   → google_monitoring_notification_channel
 
-# ── Notification channel ──────────────────────────────────────────────────────
-# AWS equivalent: aws_sns_topic + aws_sns_topic_subscription (email)
-# Note: GCP sends a confirmation email — click it before alerts are delivered.
+# ── Notification channel (SNS equivalent) ─────────────────────────────────────
 resource "google_monitoring_notification_channel" "email" {
   display_name = "Status API alert email"
   type         = "email"
   project      = var.project_id
-
   labels = {
     email_address = var.alert_email
   }
 }
 
-# ── Log-based metric ──────────────────────────────────────────────────────────
-# AWS equivalent: aws_cloudwatch_log_metric_filter
-# Counts log entries where the structured field httpRequest.status >= 500
+# ── Log-based metric: error count ─────────────────────────────────────────────
+# AWS equivalent: aws_cloudwatch_log_metric_filter on 5xx responses
 resource "google_logging_metric" "error_count" {
   name        = "status_api/error_count"
   description = "Count of HTTP 5xx responses from the status-api container"
@@ -72,57 +67,51 @@ resource "google_monitoring_uptime_check_config" "health_endpoint" {
   }
 }
 
-# ── Alert policy 1: High error rate ───────────────────────────────────────────
-# AWS equivalent: aws_cloudwatch_metric_alarm on HTTPCode_Target_5XX_Count
+# ── Alert 1: HighErrorRate ─────────────────────────────────────────────────────
+# AWS equivalent: aws_cloudwatch_metric_alarm HTTPCode_Target_5XX_Count
+# Triggered by: GET /simulate/error
 resource "google_monitoring_alert_policy" "high_error_rate" {
   display_name = "HighErrorRate — status-api"
   project      = var.project_id
   combiner     = "OR"
 
   conditions {
-    display_name = "HTTP 5xx errors in logs"
-
+    display_name = "HTTP 5xx errors > 5 per minute"
     condition_threshold {
-      filter          = "resource.type = \"gce_instance\" AND metric.type = \"logging.googleapis.com/user/status_api/error_count\""
+      filter          = "resource.type=\"gce_instance\" AND metric.type=\"logging.googleapis.com/user/status_api/error_count\""
       duration        = "300s"
       comparison      = "COMPARISON_GT"
       threshold_value = 5
-
       aggregations {
         alignment_period   = "60s"
-        per_series_aligner = "ALIGN_RATE"
+        per_series_aligner = "ALIGN_DELTA"
       }
     }
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-
   documentation {
-    content   = "The status-api error rate has exceeded 5% in the last 5 minutes. Check Cloud Logging for 500 responses. Trigger endpoint: GET /simulate/error"
+    content   = "API error rate > 5% over 5 minutes. Check logs. Trigger: GET /simulate/error"
     mime_type = "text/markdown"
   }
-
-  alert_strategy {
-    auto_close = "1800s"
-  }
+  alert_strategy { auto_close = "1800s" }
 }
 
-# ── Alert policy 2: High latency ──────────────────────────────────────────────
-# AWS equivalent: aws_cloudwatch_metric_alarm on TargetResponseTime P99
+# ── Alert 2: HighLatency ───────────────────────────────────────────────────────
+# AWS equivalent: aws_cloudwatch_metric_alarm TargetResponseTime P99
+# Triggered by: GET /simulate/latency
 resource "google_monitoring_alert_policy" "high_latency" {
   display_name = "HighLatency — status-api P99 > 2s"
   project      = var.project_id
   combiner     = "OR"
 
   conditions {
-    display_name = "VM CPU sustained high (latency proxy)"
-
+    display_name = "VM CPU > 70% (latency proxy until custom metrics available)"
     condition_threshold {
-      filter          = "resource.type = \"gce_instance\" AND metric.type = \"compute.googleapis.com/instance/cpu/utilization\""
+      filter          = "resource.type=\"gce_instance\" AND metric.type=\"compute.googleapis.com/instance/cpu/utilization\""
       duration        = "180s"
       comparison      = "COMPARISON_GT"
       threshold_value = 0.70
-
       aggregations {
         alignment_period   = "60s"
         per_series_aligner = "ALIGN_MEAN"
@@ -131,33 +120,27 @@ resource "google_monitoring_alert_policy" "high_latency" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-
   documentation {
-    content   = "P99 latency has exceeded 2000ms. Check for slow requests. Trigger endpoint: GET /simulate/latency"
+    content   = "P99 latency proxy (CPU) exceeded threshold. Trigger: GET /simulate/latency"
     mime_type = "text/markdown"
   }
-
-  alert_strategy {
-    auto_close = "1800s"
-  }
+  alert_strategy { auto_close = "1800s" }
 }
 
-# ── Alert policy 3: High CPU ──────────────────────────────────────────────────
-# AWS equivalent: aws_cloudwatch_metric_alarm on CPUUtilization
+# ── Alert 3: InstanceCPUHigh ──────────────────────────────────────────────────
+# AWS equivalent: aws_cloudwatch_metric_alarm CPUUtilization > 80%
 resource "google_monitoring_alert_policy" "high_cpu" {
-  display_name = "InstanceCPUHigh — status-api VM > 80%"
+  display_name = "InstanceCPUHigh — VM CPU > 80%"
   project      = var.project_id
   combiner     = "OR"
 
   conditions {
-    display_name = "VM CPU utilization > 80%"
-
+    display_name = "CPU utilization > 80% for 5 minutes"
     condition_threshold {
-      filter          = "resource.type = \"gce_instance\" AND metric.type = \"compute.googleapis.com/instance/cpu/utilization\""
+      filter          = "resource.type=\"gce_instance\" AND metric.type=\"compute.googleapis.com/instance/cpu/utilization\""
       duration        = "300s"
       comparison      = "COMPARISON_GT"
       threshold_value = 0.80
-
       aggregations {
         alignment_period   = "60s"
         per_series_aligner = "ALIGN_MEAN"
@@ -166,33 +149,27 @@ resource "google_monitoring_alert_policy" "high_cpu" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-
   documentation {
-    content   = "VM CPU has been above 80% for 5 minutes. Consider scaling or investigating runaway processes."
+    content   = "VM CPU > 80% for 5 minutes. Check for runaway processes."
     mime_type = "text/markdown"
   }
-
-  alert_strategy {
-    auto_close = "1800s"
-  }
+  alert_strategy { auto_close = "1800s" }
 }
 
-# ── Alert policy 4: App unhealthy (uptime check failure) ──────────────────────
-# AWS equivalent: aws_cloudwatch_metric_alarm on Route53 HealthCheckStatus
+# ── Alert 4: AppUnhealthy ─────────────────────────────────────────────────────
+# AWS equivalent: aws_cloudwatch_metric_alarm on Route53 health check
 resource "google_monitoring_alert_policy" "app_unhealthy" {
   display_name = "AppUnhealthy — health check failing"
   project      = var.project_id
   combiner     = "OR"
 
   conditions {
-    display_name = "Uptime check /health failing"
-
+    display_name = "Uptime check /health failing 2 consecutive times"
     condition_threshold {
-      filter          = "resource.type = \"uptime_url\" AND metric.type = \"monitoring.googleapis.com/uptime_check/check_passed\""
+      filter          = "resource.type=\"uptime_url\" AND metric.type=\"monitoring.googleapis.com/uptime_check/check_passed\""
       duration        = "120s"
       comparison      = "COMPARISON_LT"
       threshold_value = 1
-
       aggregations {
         alignment_period   = "60s"
         per_series_aligner = "ALIGN_FRACTION_TRUE"
@@ -201,33 +178,27 @@ resource "google_monitoring_alert_policy" "app_unhealthy" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-
   documentation {
-    content   = "The /health endpoint is not returning 200 OK. Check if the Docker container is running on the VM."
+    content   = "/health endpoint not returning 200. Check if Docker container is running."
     mime_type = "text/markdown"
   }
-
-  alert_strategy {
-    auto_close = "1800s"
-  }
+  alert_strategy { auto_close = "1800s" }
 }
 
-# ── Alert policy 5: No traffic ────────────────────────────────────────────────
-# AWS equivalent: aws_cloudwatch_metric_alarm on NetworkIn = 0
+# ── Alert 5: NoBytesIn ────────────────────────────────────────────────────────
+# AWS equivalent: aws_cloudwatch_metric_alarm NetworkIn = 0
 resource "google_monitoring_alert_policy" "no_traffic" {
-  display_name = "NoBytesIn — VM receiving no network traffic"
+  display_name = "NoBytesIn — no network traffic for 10 minutes"
   project      = var.project_id
   combiner     = "OR"
 
   conditions {
     display_name = "No inbound bytes for 10 minutes"
-
     condition_threshold {
-      filter          = "resource.type = \"gce_instance\" AND metric.type = \"compute.googleapis.com/instance/network/received_bytes_count\""
+      filter          = "resource.type=\"gce_instance\" AND metric.type=\"compute.googleapis.com/instance/network/received_bytes_count\""
       duration        = "600s"
       comparison      = "COMPARISON_LT"
       threshold_value = 1
-
       aggregations {
         alignment_period   = "60s"
         per_series_aligner = "ALIGN_RATE"
@@ -236,19 +207,16 @@ resource "google_monitoring_alert_policy" "no_traffic" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-
   documentation {
-    content   = "VM has received no inbound network bytes for 10 minutes. Instance may be stopped or unreachable."
+    content   = "No inbound network bytes for 10 min. Instance may be stopped or crashed."
     mime_type = "text/markdown"
   }
-
-  alert_strategy {
-    auto_close = "3600s"
-  }
+  alert_strategy { auto_close = "3600s" }
 }
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 # AWS equivalent: aws_cloudwatch_dashboard
+# Fix: use ALIGN_MEAN for GAUGE/DOUBLE metrics (not ALIGN_RATE or ALIGN_PERCENTILE_99)
 resource "google_monitoring_dashboard" "main" {
   project = var.project_id
   dashboard_json = jsonencode({
@@ -256,19 +224,20 @@ resource "google_monitoring_dashboard" "main" {
     mosaicLayout = {
       columns = 12
       tiles = [
+        # Tile 1: Request count — log-based DELTA metric, use ALIGN_DELTA
         {
           width  = 6
           height = 4
           widget = {
-            title = "Request count (custom metric)"
+            title = "Request count (5xx errors — log metric)"
             xyChart = {
               dataSets = [{
                 timeSeriesQuery = {
                   timeSeriesFilter = {
-                    filter = "metric.type=\"custom.googleapis.com/status_api/request_count\" resource.type=\"gce_instance\""
+                    filter = "metric.type=\"logging.googleapis.com/user/status_api/error_count\" resource.type=\"gce_instance\""
                     aggregation = {
                       alignmentPeriod    = "60s"
-                      perSeriesAligner   = "ALIGN_RATE"
+                      perSeriesAligner   = "ALIGN_DELTA"
                       crossSeriesReducer = "REDUCE_SUM"
                     }
                   }
@@ -278,35 +247,13 @@ resource "google_monitoring_dashboard" "main" {
             }
           }
         },
+        # Tile 2: Response time via CPU (GAUGE/DOUBLE → ALIGN_MEAN only)
         {
           xPos   = 6
           width  = 6
           height = 4
           widget = {
-            title = "Response time P99 (ms)"
-            xyChart = {
-              dataSets = [{
-                timeSeriesQuery = {
-                  timeSeriesFilter = {
-                    filter = "metric.type=\"custom.googleapis.com/status_api/response_time_ms\" resource.type=\"gce_instance\""
-                    aggregation = {
-                      alignmentPeriod    = "60s"
-                      perSeriesAligner   = "ALIGN_PERCENTILE_99"
-                      crossSeriesReducer = "REDUCE_MEAN"
-                    }
-                  }
-                }
-                plotType = "LINE"
-              }]
-            }
-          }
-        },
-        {
-          yPos   = 4
-          width  = 6
-          height = 4
-          widget = {
-            title = "VM CPU utilization (%)"
+            title = "Response time proxy — VM CPU utilization"
             xyChart = {
               dataSets = [{
                 timeSeriesQuery = {
@@ -324,13 +271,13 @@ resource "google_monitoring_dashboard" "main" {
             }
           }
         },
+        # Tile 3: Uptime check pass rate
         {
-          xPos   = 6
           yPos   = 4
           width  = 6
           height = 4
           widget = {
-            title = "Uptime check — /health"
+            title = "Uptime check — /health pass rate"
             xyChart = {
               dataSets = [{
                 timeSeriesQuery = {
@@ -348,12 +295,14 @@ resource "google_monitoring_dashboard" "main" {
             }
           }
         },
+        # Tile 4: Network bytes in
         {
-          yPos   = 8
-          width  = 12
+          xPos   = 6
+          yPos   = 4
+          width  = 6
           height = 4
           widget = {
-            title = "Network bytes received"
+            title = "Network bytes received (NoBytesIn detector)"
             xyChart = {
               dataSets = [{
                 timeSeriesQuery = {
@@ -368,6 +317,18 @@ resource "google_monitoring_dashboard" "main" {
                 }
                 plotType = "LINE"
               }]
+            }
+          }
+        },
+        # Tile 5: Alert status widget (all 5 alarms)
+        {
+          yPos   = 8
+          width  = 12
+          height = 4
+          widget = {
+            title = "All alert policies — status"
+            alertChart = {
+              name = "projects/${var.project_id}/alertPolicies/-"
             }
           }
         }
