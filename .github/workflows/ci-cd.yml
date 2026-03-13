@@ -298,10 +298,10 @@ jobs:
               REGISTRY=${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.AR_REPO }}
               IMAGE=\$REGISTRY/status-api:sha-${{ needs.build-and-scan.outputs.short-sha }}
               gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
-              docker pull \$IMAGE
-              docker stop status-api 2>/dev/null || true
-              docker rm status-api 2>/dev/null || true
-              docker run -d --name status-api --restart unless-stopped -p 8080:8080 -e GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }} -e SECRET_NAME=status-api-app-env \$IMAGE
+              sudo docker pull \$IMAGE
+              sudo docker stop status-api 2>/dev/null || true
+              sudo docker rm status-api 2>/dev/null || true
+              sudo docker run -d --name status-api --restart unless-stopped -p 8080:8080 -e GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }} -e SECRET_NAME=status-api-app-env \$IMAGE
               echo Deploy complete"
 
       - name: Health check — wait for service
