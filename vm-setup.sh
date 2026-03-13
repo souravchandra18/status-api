@@ -82,7 +82,7 @@ fi
 # ── Python packages ───────────────────────────────────────────────────────────
 echo ""
 echo " Installing Python packages..."
-pip3 install --break-system-packages --quiet \
+pip install --break-system-packages --quiet \
   fastapi==0.111.0 \
   uvicorn[standard]==0.30.1 \
   structlog==24.2.0 \
