@@ -16,16 +16,28 @@
 │   ├── requirements.txt     # Runtime: fastapi, uvicorn, google-cloud-secret-manager, google-cloud-monitoring
 │   └── requirements-dev.txt # Test: pytest, httpx, pytest-cov
 │
-├── terraform/
-│   ├── main.tf              # GCP provider, backend (GCS), API enablement
-│   ├── variables.tf         # All input variables
-│   ├── variables_extra.tf   # github_repository variable (for WIF binding)
-│   ├── terraform.tfvars     # Non-secret values (committed)
-│   ├── networking.tf        # VPC, subnet, firewall rules (SSH restricted, egress HTTPS-only)
-│   ├── iam.tf               # Service accounts, least-privilege IAM, Workload Identity Federation
-│   ├── compute.tf           # Compute Engine e2-micro, Artifact Registry, Secret Manager, GCS state
-│   ├── observability.tf     # Cloud Monitoring alerts (5), uptime check, dashboard, log metric
-│   └── outputs.tf           # Instance IP, app URL, Artifact Registry URL, WIF provider name
+terraform/
+├── main.tf          ← root module — provider config + calls all 3 modules
+├── variables.tf     ← all input variables with descriptions + type constraints + validations
+├── outputs.tf       ← public IP, Artifact Registry URL, secret name, WIF details
+├── backend.tf       ← GCS remote state config (GCP equivalent of S3 backend)
+├── terraform.tfvars ← non-secret defaults only
+│
+└── modules/
+    ├── networking/  ← VPC, subnet, NAT, firewall rules (≡ VPC+IGW+routes+SGs)
+    │   ├── main.tf
+    │   ├── variables.tf
+    │   └── outputs.tf
+    │
+    ├── compute/     ← VM, Artifact Registry, Secret Manager, IAM, WIF (≡ EC2+ECR+IAM)
+    │   ├── main.tf
+    │   ├── variables.tf
+    │   └── outputs.tf
+    │
+    └── observability/ ← Monitoring alarms, uptime check, dashboard, log metric (≡ CloudWatch)
+        ├── main.tf
+        ├── variables.tf
+        └── outputs.tf
 │
 ├── .github/
 │   ├── workflows/
