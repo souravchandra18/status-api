@@ -79,23 +79,6 @@ else
   echo "  ✅ Terraform installed: $(terraform --version | head -1)"
 fi
 
-# ── Python packages ───────────────────────────────────────────────────────────
-echo ""
-echo " Installing Python packages..."
-pip install fastapi==0.111.0 \
-  uvicorn[standard]==0.30.1 \
-  structlog==24.2.0 \
-  google-cloud-secret-manager==2.20.0 \
-  google-cloud-monitoring==2.22.0 \
-  protobuf==4.25.3 \
-  httpx==0.27.0 \
-  pytest==8.2.2 \
-  pytest-asyncio==0.23.7 \
-  pytest-cov==5.0.0 \
-  bandit==1.7.9 \
-  semgrep
-
-echo "  ✅ Python packages installed"
 
 # ── Trivy ─────────────────────────────────────────────────────────────────────
 echo ""
