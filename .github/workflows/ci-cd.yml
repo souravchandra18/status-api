@@ -276,32 +276,32 @@ jobs:
       - name: Rolling restart — pull new image on VM
         run: |
           INSTANCE=$(gcloud compute instances list \
-            --filter="labels.project=status-api" \
+            --filter="name~status-api" \
             --format="value(name)" \
-            --project=${{ secrets.GCP_PROJECT_ID }})
+            --project=${{ secrets.GCP_PROJECT_ID }} | head -1)
           ZONE=$(gcloud compute instances list \
-            --filter="labels.project=status-api" \
+            --filter="name~status-api" \
             --format="value(zone)" \
-            --project=${{ secrets.GCP_PROJECT_ID }})
-
+            --project=${{ secrets.GCP_PROJECT_ID }} | head -1)
+          echo "Instance: $INSTANCE  Zone: $ZONE"
+          if [ -z "$INSTANCE" ]; then
+            echo "::error::Could not find status-api instance"
+            exit 1
+          fi
           gcloud compute ssh "$INSTANCE" \
             --zone="$ZONE" \
             --project=${{ secrets.GCP_PROJECT_ID }} \
-            --command="
+            --ssh-key-expire-after=10m \
+            --quiet \
+            --command="set -e
               REGISTRY=${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.AR_REPO }}
               IMAGE=\$REGISTRY/status-api:sha-${{ needs.build-and-scan.outputs.short-sha }}
               gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
               docker pull \$IMAGE
-              docker stop status-api || true
-              docker rm status-api || true
-              docker run -d \
-                --name status-api \
-                --restart unless-stopped \
-                -p 8080:8080 \
-                -e GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }} \
-                -e SECRET_NAME=status-api-app-env \
-                \$IMAGE
-            "
+              docker stop status-api 2>/dev/null || true
+              docker rm status-api 2>/dev/null || true
+              docker run -d --name status-api --restart unless-stopped -p 8080:8080 -e GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }} -e SECRET_NAME=status-api-app-env \$IMAGE
+              echo Deploy complete"
 
       - name: Health check — wait for service
         run: |
