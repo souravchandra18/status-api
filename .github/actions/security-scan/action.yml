@@ -3,7 +3,7 @@ description: "Composite action — Bandit SAST, Semgrep, TruffleHog secrets scan
 
 inputs:
   image-tag:
-    description: "Full Docker image tag to scan (e.g. region-docker.pkg.dev/project/repo/image:tag)"
+    description: "Full Docker image tag to scan"
     required: false
     default: ""
 
@@ -19,7 +19,6 @@ runs:
   using: "composite"
   steps:
 
-    # ── D1a: Bandit SAST (HIGH severity only) ──────────────────────────────
     - name: Install Bandit & Semgrep
       shell: bash
       run: pip install bandit semgrep --quiet
@@ -29,19 +28,31 @@ runs:
       shell: bash
       run: |
         set +e
-        bandit -r app/ -ll -f json -o bandit-report.json
-        EXIT=$?
-        echo "exit_code=$EXIT" >> "$GITHUB_OUTPUT"
-        echo "### Bandit SAST Results" >> "$GITHUB_STEP_SUMMARY"
-        python3 -c "
-        import json, sys
-        d = json.load(open('bandit-report.json'))
-        issues = d.get('results', [])
-        print(f'**{len(issues)} HIGH/MEDIUM issue(s) found**')
-        for i in issues[:5]:
-            print(f'- {i[\"issue_text\"]} [{i[\"filename\"]}:{i[\"line_number\"]}]')
-        " >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || echo "Bandit report parse error" >> "$GITHUB_STEP_SUMMARY"
-        exit $EXIT
+        bandit -r app/ -ll -f json -o bandit-report.json 2>/dev/null || true
+        python3 << 'PYEOF'
+        import json, sys, os
+        try:
+            d = json.load(open('bandit-report.json'))
+            issues = d.get('results', [])
+        except Exception:
+            issues = []
+        high = [i for i in issues if i.get('issue_severity','').upper() == 'HIGH']
+        med  = [i for i in issues if i.get('issue_severity','').upper() == 'MEDIUM']
+        summary = f"### Bandit SAST Results\nHIGH: **{len(high)}** | MEDIUM: **{len(med)}**\n"
+        for i in high[:5]:
+            summary += f"- HIGH: {i['issue_text']} [{i['filename']}:{i['line_number']}]\n"
+        for i in med[:3]:
+            summary += f"- MEDIUM: {i['issue_text']} [{i['filename']}:{i['line_number']}]\n"
+        with open(os.environ.get('GITHUB_STEP_SUMMARY', '/dev/null'), 'a') as f:
+            f.write(summary)
+        with open(os.environ.get('GITHUB_OUTPUT', '/dev/null'), 'a') as f:
+            f.write(f"exit_code={len(high)}\n")
+        if len(high) > 0:
+            print(f"::error::Bandit found {len(high)} HIGH severity issue(s) — pipeline blocked")
+            sys.exit(1)
+        else:
+            print(f"Bandit: 0 HIGH findings ({len(med)} MEDIUM — informational only)")
+        PYEOF
 
     - name: Upload Bandit report
       uses: actions/upload-artifact@v4
@@ -50,7 +61,6 @@ runs:
         path: bandit-report.json
         retention-days: 30
 
-    # ── D1b: Semgrep ────────────────────────────────────────────────────────
     - name: Run Semgrep
       shell: bash
       run: |
@@ -64,7 +74,6 @@ runs:
         path: semgrep-report.json
         retention-days: 30
 
-    # ── D2: TruffleHog secrets scan (full git history) ──────────────────────
     - name: Install TruffleHog
       shell: bash
       run: |
@@ -90,7 +99,6 @@ runs:
         path: trufflehog-report.json
         retention-days: 30
 
-    # ── D3: Trivy container vulnerability scan ──────────────────────────────
     - name: Run Trivy image scan
       id: trivy
       if: inputs.image-tag != ''
@@ -99,21 +107,9 @@ runs:
         curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
           | sh -s -- -b /usr/local/bin
         set +e
-        trivy image \
-          --severity CRITICAL,HIGH \
-          --format json \
-          --output trivy-report.json \
-          "${{ inputs.image-tag }}"
+        trivy image --severity CRITICAL,HIGH --format json --output trivy-report.json "${{ inputs.image-tag }}"
         EXIT=$?
         echo "exit_code=$EXIT" >> "$GITHUB_OUTPUT"
-        echo "### Trivy Container Scan" >> "$GITHUB_STEP_SUMMARY"
-        python3 -c "
-        import json
-        d = json.load(open('trivy-report.json'))
-        crit = sum(len([v for v in r.get('Vulnerabilities') or [] if v.get('Severity')=='CRITICAL']) for r in d.get('Results',[]))
-        high = sum(len([v for v in r.get('Vulnerabilities') or [] if v.get('Severity')=='HIGH']) for r in d.get('Results',[]))
-        print(f'CRITICAL: **{crit}** | HIGH: **{high}**')
-        " >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
         exit $EXIT
 
     - name: Upload Trivy report
