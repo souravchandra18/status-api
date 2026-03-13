@@ -2,6 +2,10 @@ name: "Security Scan"
 description: "Composite action — Bandit SAST, Semgrep, TruffleHog secrets scan, Trivy container scan"
 
 inputs:
+  artifact-suffix:
+    description: "Suffix to make artifact names unique per call"
+    required: false
+    default: ""
   image-tag:
     description: "Full Docker image tag to scan"
     required: false
@@ -57,7 +61,7 @@ runs:
     - name: Upload Bandit report
       uses: actions/upload-artifact@v4
       with:
-        name: bandit-report
+        name: bandit-report${{ inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '' }}
         path: bandit-report.json
         retention-days: 30
 
@@ -70,7 +74,7 @@ runs:
     - name: Upload Semgrep report
       uses: actions/upload-artifact@v4
       with:
-        name: semgrep-report
+        name: semgrep-report${{ inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '' }}
         path: semgrep-report.json
         retention-days: 30
 
@@ -95,7 +99,7 @@ runs:
     - name: Upload TruffleHog report
       uses: actions/upload-artifact@v4
       with:
-        name: trufflehog-report
+        name: trufflehog-report${{ inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '' }}
         path: trufflehog-report.json
         retention-days: 30
 

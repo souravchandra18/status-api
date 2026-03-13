@@ -72,6 +72,8 @@ jobs:
 
       - name: Run composite security scan (SAST + secrets)
         uses: ./.github/actions/security-scan
+        with:
+          artifact-suffix: sast
         # No image-tag here — container scan runs after build in stage 4
 
       - name: Run tfsec (Terraform IaC security scan)
@@ -213,6 +215,7 @@ jobs:
       - name: Run composite security scan (container)
         uses: ./.github/actions/security-scan
         with:
+          artifact-suffix: container
           image-tag: ${{ steps.meta.outputs.image-tag }}
 
       - name: Push image to Artifact Registry
