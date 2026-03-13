@@ -36,9 +36,9 @@ resource "google_logging_metric" "error_count" {
   EOT
 
   metric_descriptor {
-    metric_kind = "DELTA"
-    value_type  = "INT64"
-    unit        = "1"
+    metric_kind  = "DELTA"
+    value_type   = "INT64"
+    unit         = "1"
     display_name = "Status API error count"
   }
 }
@@ -250,7 +250,7 @@ resource "google_monitoring_alert_policy" "no_traffic" {
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 # AWS equivalent: aws_cloudwatch_dashboard
 resource "google_monitoring_dashboard" "main" {
-  project        = var.project_id
+  project = var.project_id
   dashboard_json = jsonencode({
     displayName = "Status API Dashboard"
     mosaicLayout = {

@@ -25,7 +25,7 @@ output "artifact_registry_url" {
     Use with: docker push ARTIFACT_REGISTRY_URL:tag
     Equivalent to the ECR registry URL in AWS.
   EOT
-  value = module.compute.artifact_registry_url
+  value       = module.compute.artifact_registry_url
 }
 
 # ── Secret ────────────────────────────────────────────────────────────────────
@@ -37,7 +37,7 @@ output "secret_name" {
     Equivalent to the Secrets Manager secret ARN in AWS.
     Use with: gcloud secrets versions access latest --secret=NAME
   EOT
-  value = module.compute.secret_name
+  value       = module.compute.secret_name
 }
 
 # ── IAM / Auth ────────────────────────────────────────────────────────────────
@@ -49,7 +49,7 @@ output "workload_identity_provider" {
     Paste this as the WIF_PROVIDER GitHub secret.
     Equivalent to the AWS OIDC provider ARN used in GitHub Actions.
   EOT
-  value = module.compute.workload_identity_provider
+  value       = module.compute.workload_identity_provider
 }
 
 output "cicd_service_account_email" {
@@ -58,7 +58,7 @@ output "cicd_service_account_email" {
     Paste this as the WIF_SERVICE_ACCOUNT GitHub secret.
     Equivalent to the IAM role ARN assumed by GitHub Actions in AWS.
   EOT
-  value = module.compute.cicd_service_account_email
+  value       = module.compute.cicd_service_account_email
 }
 
 # ── Observability ─────────────────────────────────────────────────────────────

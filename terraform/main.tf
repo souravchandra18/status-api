@@ -43,9 +43,9 @@ resource "google_project_service" "apis" {
 module "networking" {
   source = "./modules/networking"
 
-  project_id      = var.project_id
-  region          = var.region
-  allowed_ssh_ip  = var.allowed_ssh_ip
+  project_id     = var.project_id
+  region         = var.region
+  allowed_ssh_ip = var.allowed_ssh_ip
 
   depends_on = [google_project_service.apis]
 }
@@ -55,14 +55,14 @@ module "networking" {
 module "compute" {
   source = "./modules/compute"
 
-  project_id         = var.project_id
-  region             = var.region
-  zone               = var.zone
-  network_id         = module.networking.network_id
-  subnetwork_id      = module.networking.subnetwork_id
-  image_name         = var.image_name
-  app_version        = var.app_version
-  github_repository  = var.github_repository
+  project_id        = var.project_id
+  region            = var.region
+  zone              = var.zone
+  network_id        = module.networking.network_id
+  subnetwork_id     = module.networking.subnetwork_id
+  image_name        = var.image_name
+  app_version       = var.app_version
+  github_repository = var.github_repository
 
   depends_on = [module.networking, google_project_service.apis]
 }
@@ -72,12 +72,12 @@ module "compute" {
 module "observability" {
   source = "./modules/observability"
 
-  project_id          = var.project_id
-  region              = var.region
-  alert_email         = var.alert_email
-  instance_id         = module.compute.instance_id
-  instance_zone       = var.zone
-  instance_ip         = module.compute.instance_public_ip
+  project_id    = var.project_id
+  region        = var.region
+  alert_email   = var.alert_email
+  instance_id   = module.compute.instance_id
+  instance_zone = var.zone
+  instance_ip   = module.compute.instance_public_ip
 
   depends_on = [module.compute, google_project_service.apis]
 }

@@ -14,7 +14,7 @@
 # AWS equivalent: aws_vpc with enable_dns_support + enable_dns_hostnames
 resource "google_compute_network" "vpc" {
   name                    = "status-api-vpc"
-  auto_create_subnetworks = false   # custom subnets only — equivalent to a non-default VPC
+  auto_create_subnetworks = false # custom subnets only — equivalent to a non-default VPC
   description             = "VPC for status-api workload"
   project                 = var.project_id
 }
@@ -117,7 +117,7 @@ resource "google_compute_firewall" "allow_health_check" {
     ports    = ["8080"]
   }
 
-  target_tags   = ["status-api-vm"]
+  target_tags = ["status-api-vm"]
   # GCP uptime check probe IP ranges
   source_ranges = ["35.191.0.0/16", "130.211.0.0/22"]
 }
@@ -150,7 +150,7 @@ resource "google_compute_firewall" "deny_egress_all" {
   project     = var.project_id
   description = "Deny all other egress — least-privilege network posture"
   direction   = "EGRESS"
-  priority    = 65534   # lower priority than allow-https (1000), evaluated last
+  priority    = 65534 # lower priority than allow-https (1000), evaluated last
 
   deny {
     protocol = "all"

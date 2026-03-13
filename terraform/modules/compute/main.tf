@@ -34,7 +34,7 @@ resource "google_artifact_registry_repository" "repo" {
     action = "DELETE"
     condition {
       tag_state  = "UNTAGGED"
-      older_than = "604800s"   # 7 days
+      older_than = "604800s" # 7 days
     }
   }
 }
@@ -193,16 +193,16 @@ resource "google_service_account_iam_member" "wif_binding" {
 # AWS equivalent: aws_instance (t2.micro) or aws_ecs_task_definition
 resource "google_compute_instance" "app" {
   name         = "status-api-instance"
-  machine_type = "e2-micro"    # always-free tier in us-central1/us-east1/us-west1
+  machine_type = "e2-micro" # always-free tier in us-central1/us-east1/us-west1
   zone         = var.zone
   project      = var.project_id
 
-  tags = ["status-api-vm"]    # selects firewall rules from networking module
+  tags = ["status-api-vm"] # selects firewall rules from networking module
 
   boot_disk {
     initialize_params {
       image = "debian-cloud/debian-12"
-      size  = 10   # GB — plenty for the OS + Docker
+      size  = 10 # GB — plenty for the OS + Docker
       type  = "pd-standard"
     }
   }
