@@ -1,0 +1,45 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfplan
+tfplan.binary
+.terraform.lock.hcl
+*.tfvars.local
+override.tf
+override.tf.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# GCP credentials — NEVER commit
+*.json
+application_default_credentials.json
+service-account-key.json
+gcloud-credentials.json
+
+# Security scan outputs (generated at CI runtime — not committed)
+bandit-report.json
+semgrep-report.json
+trufflehog-report.json
+trivy-report.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
