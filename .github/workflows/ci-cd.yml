@@ -276,11 +276,11 @@ jobs:
       - name: Rolling restart — pull new image on VM
         run: |
           INSTANCE=$(gcloud compute instances list \
-            --filter="name~status-api" \
+            --filter="name=status-api-instance" \
             --format="value(name)" \
             --project=${{ secrets.GCP_PROJECT_ID }} | head -1)
           ZONE=$(gcloud compute instances list \
-            --filter="name~status-api" \
+            --filter="name=status-api-instance" \
             --format="value(zone)" \
             --project=${{ secrets.GCP_PROJECT_ID }} | head -1)
           echo "Instance: $INSTANCE  Zone: $ZONE"
