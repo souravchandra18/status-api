@@ -287,7 +287,6 @@ resource "google_compute_instance" "app" {
   depends_on = [
     google_service_account.app_sa,
     google_artifact_registry_repository.repo,
-    google_secret_manager_secret_version.app_env,
   ]
 }
 
