@@ -14,11 +14,16 @@ variable "alert_email" {
 }
 
 variable "instance_id" {
-  description = "Compute Engine instance ID — used for metric filters"
+  description = "Compute Engine instance ID"
   type        = string
 }
 
 variable "instance_zone" {
-  description = "Zone of the Compute Engine instance — used for uptime check"
+  description = "Zone of the Compute Engine instance"
+  type        = string
+}
+
+variable "instance_ip" {
+  description = "Public IP of the Compute Engine instance — used for uptime check host"
   type        = string
 }

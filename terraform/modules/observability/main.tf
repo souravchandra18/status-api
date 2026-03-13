@@ -62,7 +62,7 @@ resource "google_monitoring_uptime_check_config" "health_endpoint" {
     type = "uptime_url"
     labels = {
       project_id = var.project_id
-      host       = var.instance_zone
+      host       = var.instance_ip
     }
   }
 
@@ -80,17 +80,18 @@ resource "google_monitoring_alert_policy" "high_error_rate" {
   combiner     = "OR"
 
   conditions {
-    display_name = "HTTP 5xx rate > 5%"
+    display_name = "HTTP 5xx errors in logs"
 
-    condition_monitoring_query_language {
-      query    = <<EOT
-        fetch gce_instance
-        | metric 'custom.googleapis.com/status_api/request_count'
-        | group_by 5m, [value_request_count_aggregate: aggregate(value.request_count)]
-        | every 5m
-        | condition val() > 0
-      EOT
-      duration = "300s"
+    condition_threshold {
+      filter          = "resource.type = \"gce_instance\" AND metric.type = \"logging.googleapis.com/user/status_api/error_count\""
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = 5
+
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_RATE"
+      }
     }
   }
 
@@ -114,17 +115,18 @@ resource "google_monitoring_alert_policy" "high_latency" {
   combiner     = "OR"
 
   conditions {
-    display_name = "Response time P99 > 2000ms"
+    display_name = "VM CPU sustained high (latency proxy)"
 
-    condition_monitoring_query_language {
-      query    = <<EOT
-        fetch gce_instance
-        | metric 'custom.googleapis.com/status_api/response_time_ms'
-        | group_by 3m, [value_p99: percentile(value.response_time_ms, 99)]
-        | every 3m
-        | condition val() > 2000
-      EOT
-      duration = "180s"
+    condition_threshold {
+      filter          = "resource.type = \"gce_instance\" AND metric.type = \"compute.googleapis.com/instance/cpu/utilization\""
+      duration        = "180s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0.70
+
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_MEAN"
+      }
     }
   }
 

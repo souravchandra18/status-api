@@ -77,6 +77,7 @@ module "observability" {
   alert_email         = var.alert_email
   instance_id         = module.compute.instance_id
   instance_zone       = var.zone
+  instance_ip         = module.compute.instance_public_ip
 
   depends_on = [module.compute, google_project_service.apis]
 }
