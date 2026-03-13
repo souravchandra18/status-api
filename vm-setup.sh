@@ -82,8 +82,7 @@ fi
 # ── Python packages ───────────────────────────────────────────────────────────
 echo ""
 echo " Installing Python packages..."
-pip install --break-system-packages --quiet \
-  fastapi==0.111.0 \
+pip install fastapi==0.111.0 \
   uvicorn[standard]==0.30.1 \
   structlog==24.2.0 \
   google-cloud-secret-manager==2.20.0 \
