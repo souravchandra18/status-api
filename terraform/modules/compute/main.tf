@@ -290,3 +290,22 @@ resource "google_compute_instance" "app" {
     google_secret_manager_secret_version.app_env,
   ]
 }
+
+# CI/CD permissions for terraform plan state refresh
+resource "google_project_iam_member" "cicd_security_reviewer" {
+  project = var.project_id
+  role    = "roles/iam.securityReviewer"
+  member  = "serviceAccount:${google_service_account.cicd_sa.email}"
+}
+
+resource "google_project_iam_member" "cicd_secret_viewer" {
+  project = var.project_id
+  role    = "roles/secretmanager.viewer"
+  member  = "serviceAccount:${google_service_account.cicd_sa.email}"
+}
+
+resource "google_project_iam_member" "cicd_viewer" {
+  project = var.project_id
+  role    = "roles/viewer"
+  member  = "serviceAccount:${google_service_account.cicd_sa.email}"
+}
